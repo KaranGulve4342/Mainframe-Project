@@ -1,9 +1,25 @@
 const express = require("express")
 const router = express.Router()
-const { executeQuery, generateUniqueId, formatDate } = require("../db")
+const { executeQuery, generateUniqueId, formatDate } = require("../db") 
+const twilio = require('twilio');
+
+
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// Add helper to convert a date string into DB2 format (YYYY-MM-DD HH:mm:ss)
+function convertToDb2Format(dateStr) {
+	const date = new Date(dateStr)
+	const pad = (num) => num.toString().padStart(2, '0')
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
 
 // Create a new appointment
 router.post("/", async (req, res) => {
+  // Debug log for incoming appointment creation request
+  console.debug("[appointments] POST / - Request Body:", req.body)
   try {
     const { userId, patient: patientId, primaryPhysician, schedule, reason, status, note } = req.body
 
@@ -22,12 +38,13 @@ router.post("/", async (req, res) => {
 
     // Create new appointment
     const appointmentId = generateUniqueId()
-    const formattedSchedule = formatDate(schedule)
+    const formattedSchedule = convertToDb2Format(schedule)
 
     await executeQuery(
       `INSERT INTO APPOINTMENTS (
         APPOINTMENTID, PATIENTID, USERID, PRIMARY_PHYSICIAN, SCHEDULE, REASON, NOTE, STATUS
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+
       [appointmentId, patientId, userId, primaryPhysician, formattedSchedule, reason, note, status],
     )
 
@@ -61,6 +78,8 @@ router.post("/", async (req, res) => {
 
 // Get recent appointments
 router.get("/recent", async (req, res) => {
+  // Debug log for incoming recent appointments request
+  console.debug("[appointments] GET /recent - Request received")
   try {
     // Get all appointments ordered by creation date
     const appointments = await executeQuery(
@@ -121,6 +140,8 @@ router.get("/recent", async (req, res) => {
 
 // Update appointment
 router.put("/:appointmentId", async (req, res) => {
+  // Debug log for incoming update appointment request
+  console.debug("[appointments] PUT /:appointmentId - Request Body:", req.body)
   try {
     const { appointmentId } = req.params
     const { primaryPhysician, schedule, status, cancellationReason } = req.body
@@ -138,7 +159,7 @@ router.put("/:appointmentId", async (req, res) => {
       return res.status(404).json({ error: "Appointment not found" })
     }
 
-    const formattedSchedule = formatDate(schedule)
+    const formattedSchedule = convertToDb2Format(schedule)
 
     // Update appointment
     await executeQuery(
@@ -193,6 +214,8 @@ router.put("/:appointmentId", async (req, res) => {
 
 // Get appointment by ID
 router.get("/:appointmentId", async (req, res) => {
+  // Debug log for fetching an appointment by ID
+  console.debug("[appointments] GET /:appointmentId - Params:", req.params)
   try {
     const { appointmentId } = req.params
 
@@ -237,6 +260,8 @@ router.get("/:appointmentId", async (req, res) => {
 
 // Send SMS notification (mock implementation)
 router.post("/notify", async (req, res) => {
+  // Debug log for incoming SMS notification request
+  console.debug("[appointments] POST /notify - Request Body:", req.body)
   try {
     const { userId, content } = req.body
 
@@ -244,14 +269,25 @@ router.post("/notify", async (req, res) => {
       return res.status(400).json({ error: "User ID and content are required" })
     }
 
-    // In a real implementation, you would integrate with an SMS service
-    // For now, we'll just log the message and return a success response
-    console.log(`SMS notification to user ${userId}: ${content}`)
 
-    const messageId = generateUniqueId()
+    console.log("userId : ", userId);
+    console.log("content : ", content);
+
+    // Format mobile number if necessary (e.g., ensure it starts with '+')
+    const formattedMobile = userId.startsWith('+') ? userId : `+${userId}`;
+
+    // Send SMS via Twilio
+    const message = await twilioClient.messages.create({
+      body: content,
+      to: formattedMobile,
+      from: process.env.TWILIO_PHONE_NUMBER,
+    });
+
+    // Log the message SID
+    console.log(`SMS sent with SID: ${message.sid}`);
 
     res.status(200).json({
-      $id: messageId,
+      $id: message.sid,
       userId,
       content,
       status: "sent",

@@ -8,6 +8,11 @@ const { executeQuery, generateUniqueId, formatDate } = require("../db")
 // Register a new patient
 router.post("/register", upload.single("identificationDocument"), async (req, res) => {
   try {
+    // Debug: Log request contents
+    console.log("Debug: Received registration request for userId:", req.body.userId);
+    console.log("Debug: Request body:", req.body);
+    console.log("Debug: File info:", req.file);
+
     const {
       userId,
       name,
@@ -31,9 +36,13 @@ router.post("/register", upload.single("identificationDocument"), async (req, re
       privacyConsent,
     } = req.body
 
+    console.log("Request body:", req.body)
+    console.log("File:", req.file)
+
     if (!userId || !name || !email || !phone) {
       return res.status(400).json({ error: "User ID, name, email, and phone are required" })
     }
+    console.log("Debug: Valid input fields received");
 
     // Check if user exists
     const users = await executeQuery("SELECT * FROM USERS WHERE USERID = ?", [userId])
@@ -41,6 +50,7 @@ router.post("/register", upload.single("identificationDocument"), async (req, re
     if (users.length === 0) {
       return res.status(404).json({ error: "User not found" })
     }
+    console.log("Debug: User found", users[0]);
 
     // Check if patient already exists for this user
     const existingPatients = await executeQuery("SELECT * FROM PATIENTS WHERE USERID = ?", [userId])
@@ -74,17 +84,24 @@ router.post("/register", upload.single("identificationDocument"), async (req, re
         $createdAt: existingPatients[0].CREATED_AT,
       })
     }
+    console.log("Debug: No existing patient found for user", userId);
 
     // Process file upload
     let identificationDocumentPath = null
     if (req.file) {
       identificationDocumentPath = req.file.path
+      console.log("Debug: File uploaded, path:", identificationDocumentPath);
+    } else {
+      console.log("Debug: No file uploaded");
     }
 
     // Create new patient
     const patientId = generateUniqueId()
-    const formattedBirthDate = formatDate(birthDate)
+    console.log("Debug: Generated patientId:", patientId);
+    const formattedBirthDate = new Date(birthDate).toISOString().substring(0, 10);
+    console.log("Debug: Formatted birthDate:", formattedBirthDate);
     const privacyConsentValue = privacyConsent === "true" || privacyConsent === true ? 1 : 0
+    console.log("Debug: Privacy consent value:", privacyConsentValue);
 
     await executeQuery(
       `INSERT INTO PATIENTS (
@@ -120,6 +137,7 @@ router.post("/register", upload.single("identificationDocument"), async (req, re
         privacyConsentValue,
       ],
     )
+    console.log("Debug: Patient record inserted into database");
 
     const newPatient = {
       $id: patientId,
@@ -148,10 +166,11 @@ router.post("/register", upload.single("identificationDocument"), async (req, re
       privacyConsent: !!privacyConsentValue,
       $createdAt: new Date(),
     }
+    console.log("Debug: New patient registration complete", newPatient);
 
     res.status(201).json(newPatient)
   } catch (error) {
-    console.error("Error registering patient:", error)
+    console.error("Debug: Error during patient registration:", error);
     res.status(500).json({ error: "Failed to register patient" })
   }
 })

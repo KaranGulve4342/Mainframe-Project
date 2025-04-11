@@ -528,7 +528,7 @@ def tree_to_code(tree, feature_names):
     'C:\\Users\\Shree\\AppData\\Roaming\\npm\\zowe.cmd',  # or wherever zowe is installed
     'zos-files', 'ul', 'dtu', './reports', 'z/z52543/odbc'
 ])
-            subprocess("rm {}")
+            # subprocess("rm {}")
             print("added to zos uss ")
             
             

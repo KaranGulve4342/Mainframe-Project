@@ -10,6 +10,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.svm import SVC
 import csv
 import warnings
+import subprocess
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Load and prepare data
 training = pd.read_csv('Data/Training.csv')
@@ -523,6 +524,14 @@ def tree_to_code(tree, feature_names):
             patient_name = input("Enter patient name for the report: ")
             pdf_file = save_diagnosis_as_pdf(disease, description, precution_list, patient_name)
             print(f"Report saved as: {pdf_file}")
+            subprocess.run([
+    'C:\\Users\\Shree\\AppData\\Roaming\\npm\\zowe.cmd',  # or wherever zowe is installed
+    'zos-files', 'ul', 'dtu', './reports', 'z/z52543/odbc'
+])
+            subprocess("rm {}")
+            print("added to zos uss ")
+            
+            
             
     recurse(0, 1)
 

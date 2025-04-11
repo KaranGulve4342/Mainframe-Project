@@ -3,8 +3,12 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListItem, L
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from datetime import datetime
+import os
 
 def generate_medical_report_pdf(patient_name, disease, description, precautions, filename=None):
+    reports_folder = "reports"
+    os.makedirs(reports_folder, exist_ok=True)  # creates folder if not present
+    
     # Create a filename with patient name if not specified
     if filename is None:
         # Replace spaces with underscores and remove special characters
@@ -14,8 +18,9 @@ def generate_medical_report_pdf(patient_name, disease, description, precautions,
         filename = f"{safe_name}_{current_date}_medical_report.pdf"
     
     # Create document
-    doc = SimpleDocTemplate(filename, pagesize=letter)
-    doc = SimpleDocTemplate(filename, pagesize=letter)
+    full_path = os.path.join(reports_folder, filename)
+    
+    doc = SimpleDocTemplate(full_path, pagesize=letter)
     styles = getSampleStyleSheet()
     
     # Create custom styles
@@ -81,9 +86,10 @@ def generate_medical_report_pdf(patient_name, disease, description, precautions,
     disclaimer_text = "This report is generated based on symptoms provided and is not a substitute for professional medical advice. Please consult with a healthcare professional for proper diagnosis and treatment."
     content.append(Paragraph(disclaimer_text, normal_style))
     
+    
     # Build PDF
     doc.build(content)
-    return filename
+    return full_path
 
 def save_diagnosis_as_pdf(disease, description, precautions, patient_name=None):
     # Get patient name if not provided
@@ -97,6 +103,8 @@ def save_diagnosis_as_pdf(disease, description, precautions, patient_name=None):
         description=description,
         precautions=precautions
     )
+    
+    
     
     print(f"Medical report saved as '{pdf_file}'")
     return pdf_file

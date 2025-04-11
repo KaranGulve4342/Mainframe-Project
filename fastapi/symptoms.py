@@ -1,3 +1,4 @@
+from report_generator import save_diagnosis_as_pdf
 import re
 import pandas as pd
 import pyttsx3
@@ -10,7 +11,6 @@ from sklearn.svm import SVC
 import csv
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 # Load and prepare data
 training = pd.read_csv('Data/Training.csv')
 testing = pd.read_csv('Data/Testing.csv')
@@ -499,22 +499,31 @@ def tree_to_code(tree, feature_names):
                         if(inp == "yes"):
                             symptoms_exp.append(syms)
 
-            second_prediction = sec_predict(symptoms_exp)
-            calc_condition(symptoms_exp, num_days)
+                second_prediction = sec_predict(symptoms_exp)
+                calc_condition(symptoms_exp, num_days)
             
             if present_disease[0] == second_prediction[0]:
-                print("You may have ", present_disease[0])
-                print(description_list[present_disease[0]])
+                disease = present_disease[0]
+                print("You may have ", disease)
+                description = description_list[disease]
+                print(description)
             else:
-                print("You may have ", present_disease[0], "or ", second_prediction[0])
-                print(description_list[present_disease[0]])
+                disease = present_disease[0]  # Primary diagnosis
+                alternative = second_prediction[0]
+                print("You may have ", disease, "or ", alternative)
+                description = description_list[disease]
+                print(description_list[disease])
                 print(description_list[second_prediction[0]])
-
+                
             precution_list = precautionDictionary[present_disease[0]]
             print("Take following measures : ")
             for i, j in enumerate(precution_list):
                 print(i+1, ")", j)
 
+            patient_name = input("Enter patient name for the report: ")
+            pdf_file = save_diagnosis_as_pdf(disease, description, precution_list, patient_name)
+            print(f"Report saved as: {pdf_file}")
+            
     recurse(0, 1)
 
 # Initialize the system
@@ -524,3 +533,10 @@ getprecautionDict()
 getInfo()
 tree_to_code(clf, cols)
 print("----------------------------------------------------------------------------------------")
+
+
+
+def generate_report(disease_name, disease_desc, precautions, patient_name=None):
+    """Generate a PDF report for a diagnosed condition"""
+    from report_generator import save_diagnosis_as_pdf
+    return save_diagnosis_as_pdf(disease_name, disease_desc, precautions, patient_name)
